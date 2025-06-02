@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>NZ Mortgage Insights</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    margin: 1rem;
+    background: #f9f9f9;
+    color: #222;
+  }
+  h1 {
+    margin-bottom: 0.2rem;
+  }
+  label {
+    font-weight: bold;
+    margin-right: 0.5rem;
+  }
+  select, input[type=radio] {
+    margin-right: 1rem;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+    background: white;
+  }
+  th, td {
+    border: 1px solid #ccc;
+    padding: 0.4rem 0.7rem;
+    text-align: center;
+  }
+  th {
+    background-color: #eee;
+  }
+  #chartContainer {
+    margin-top: 2rem;
+    max-width: 900px;
+  }
+  .radio-group {
+    margin-top: 1rem;
+  }
+</style>
+</head>
+<body>
+
+<h1>NZ Mortgage Insights</h1>
+
+<div>
+  <label for="yearFilter">Filter by Year:</label>
+  <select id="yearFilter">
+    <option value="all">All</option>
+  </select>
+</div>
+
+<div class="radio-group">
+  <label><input type="radio" name="rateType" value="standard" checked /> Standard Rates</label>
+  <label><input type="radio" name="rateType" value="lowEquity" /> Low Equity Rates</label>
+</div>
+
+<table id="mortgageTable" aria-label="Mortgage Rates Table">
+  <thead>
+    <tr>
+      <th>Year</th>
+      <th>OCR %</th>
+      <th>6M Rate %</th>
+      <th>1Y Rate %</th>
+      <th>2Y Rate %</th>
+      <th>3Y Rate %</th>
+      <th>5Y Rate %</th>
+      <th>Median House Price (NZD)</th>
+    </tr>
+  </thead>
+  <tbody>
+  </tbody>
+</table>
+
+<div id="chartContainer">
+  <canvas id="rateChart"></canvas>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  // Full dataset including low equity rates (null if none)
+  const mortgageData = [
+    { year: 1999, ocr: 4.5, std6m: 7.7, low6m: null, std1y: 7.8, low1y: null, std2y: 8.1, low2y: null, std3y: 8.4, low3y: null, std5y: 8.6, low5y: null, price: 140000 },
+    { year: 2000, ocr: 6.5, std6m: 8.3, low6m: null, std1y: 8.4, low1y: null, std2y: 8.6, low2y: null, std3y: 8.9, low3y: null, std5y: 9.1, low5y: null, price: 170000 },
+    { year: 2001, ocr: 5.8, std6m: 7.6, low6m: null, std1y: 7.7, low1y: null, std2y: 7.9, low2y: null, std3y: 8.2, low3y: null, std5y: 8.4, low5y: null, price: 175000 },
+    { year: 2002, ocr: 5.8, std6m: 7.4, low6m: null, std1y: 7.5, low1y: null, std2y: 7.7, low2y: null, std3y: 8.0, low3y: null, std5y: 8.2, low5y: null, price: 195000 },
+    { year: 2003, ocr: 5.0, std6m: 7.1, low6m: null, std1y: 7.2, low1y: null, std2y: 7.4, low2y: null, std3y: 7.7, low3y: null, std5y: 7.9, low5y: null, price: 228000 },
+    { year: 2004, ocr: 6.3, std6m: 7.4, low6m: null, std1y: 7.5, low1y: null, std2y: 7.7, low2y: null, std3y: 8.0, low3y: null, std5y: 8.2, low5y: null, price: 265000 },
+    { year: 2005, ocr: 7.0, std6m: 8.0, low6m: null, std1y: 8.1, low1y: null, std2y: 8.3, low2y: null, std3y: 8.6, low3y: null, std5y: 8.8, low5y: null, price: 285000 },
+    { year: 2006, ocr: 7.3, std6m: 8.6, low6m: null, std1y: 8.7, low1y: null, std2y: 8.9, low2y: null, std3y: 9.2, low3y: null, std5y: 9.4, low5y: null, price: 330000 },
+    { year: 2007, ocr: 8.3, std6m: 9.3, low6m: null, std1y: 9.4, low1y: null, std2y: 9.6, low2y: null, std3y: 9.9, low3y: null, std5y: 10.1, low5y: null, price: 349000 },
+    { year: 2008, ocr: 8.3, std6m: 9.6, low6m: null, std1y: 9.6, low1y: null, std2y: 9.1, low2y: null, std3y: 8.8, low3y: null, std5y: 8.8, low5y: null, price: 340000 },
+    { year: 2009, ocr: 3.0, std6m: 6.0, low6m: null, std1y: 6.1, low1y: null, std2y: 6.8, low2y: null, std3y: 7.1, low3y: null, std5y: 7.3, low5y: null, price: 350000 },
+    { year: 2010, ocr: 3.0, std6m: 6.1, low6m: null, std1y: 6.2, low1y: null, std2y: 7.0, low2y: null, std3y: 7.5, low3y: null, std5y: 7.8, low5y: null, price: 352000 },
+    { year: 2011, ocr: 2.5, std6m: 5.9, low6m: null, std1y: 6.0, low1y: null, std2y: 6.9, low2y: null, std3y: 7.4, low3y: null, std5y: 7.8, low5y: null, price: 355000 },
+    { year: 2012, ocr: 2.5, std6m: 5.7, low6m: null, std1y: 5.8, low1y: null, std2y: 6.6, low2y: null, std3y: 7.0, low3y: null, std5y: 7.4, low5y: null, price: 370000 },
+    { year: 2013, ocr: 2.5, std6m: 5.7, low6m: null, std1y: 5.8, low1y: null, std2y: 6.5, low2y: null, std3y: 6.9, low3y: null, std5y: 7.3, low5y: null, price: 390000 },
+    { year: 2014, ocr: 3.0, std6m: 6.0, low6m: null, std1y: 6.1, low1y: null, std2y: 6.7, low2y: null, std3y: 7.1, low3y: null, std5y: 7.5, low5y: null, price: 430000 },
+    { year: 2015, ocr: 2.9, std6m: 5.8, low6m: null, std1y: 5.9, low1y: null, std2y: 6.5, low2y: null, std3y: 6.9, low3y: null, std5y: 7.3, low5y: null, price: 460000 },
+    { year: 2016, ocr: 2.2, std6m: 5.1, low6m: null, std1y: 5.2, low1y: null, std2y: 5.8, low2y: null, std3y: 6.2, low3y: null, std5y: 6.5, low5y: null, price: 485000 },
+    { year: 2017, ocr: 1.8, std6m: 4.7, low6m: 5.2, std1y: 4.8, low1y: 5.3, std2y: 5.4, low2y: 5.9, std3y: 5.7, low3y: 6.3, std5y: 6.0, low5y: 6.6, price: 521000 },
+    { year: 2018, ocr: 1.8, std6m: 4.7, low6m: 5.2, std1y: 4.8, low1y: 5.3, std2y: 5.4, low2y: 5.9, std3y: 5.7, low3y: 6.3, std5y: 6.0, low5y: 6.6, price: 540000 },
+    { year: 2019, ocr: 1.0, std6m: 4.2, low6m: 4.7, std1y: 4.3, low1y: 4.8, std2y: 5.0, low2y: 5.5, std3y: 5.3, low3y: 5.8, std5y: 5.7, low5y: 6.2, price: 582000 },
+    { year: 2020, ocr: 0.25, std6m: 3.7, low6m: 4.2, std1y: 3.8, low1y: 4.3, std2y: 4.5, low2y: 5.0, std3y: 4.8, low3y: 5.3, std5y: 5.2, low5y: 5.7, price: 622000 },
+    { year: 2021, ocr: 0.25, std6m: 3.7, low6m: 4.2, std1y: 3.8, low1y: 4.3, std2y: 4.5, low2y: 5.0, std3y: 4.8, low3y: 5.3, std5y: 5.2, low5y: 5.7, price: 690000 },
+    { year: 2022, ocr: 1.5, std6m: 5.3, low6m: 5.8, std1y: 5.4, low1y: 5.9, std2y: 5.8, low2y: 6.3, std3y: 6.1, low3y: 6.6, std5y: 6.4, low5y: 6.9, price: 810000 },
+    { year: 2023, ocr: 4.75, std6m: 7.9, low6m: 8.4, std1y: 8.0, low1y: 8.5, std2y: 8.3, low2y: 8.8, std3y: 8.6, low3y: 9.1, std5y: 8.9, low5y: 9.4, price: 860000 }
+  ];
+
+  // Elements
+  const yearFilter = document.getElementById('yearFilter');
+  const tableBody = document.querySelector('#mortgageTable tbody');
+  const rateRadios = document.querySelectorAll('input[name="rateType"]');
+  const ctx = document.getElementById('rateChart').getContext('2d');
+
+  // Populate Year Filter options dynamically
+  function populateYearFilter() {
+    mortgageData.forEach(d => {
+      const option = document.createElement('option');
+      option.value = d.year;
+      option.textContent = d.year;
+      yearFilter.appendChild(option);
+    });
+  }
+
+  // Current filter state
+  let currentYearFilter = 'all';
+  let currentRateType = 'standard';
+
+  // Build table rows based on current filters
+  function buildTable() {
+    // Clear existing rows
+    tableBody.innerHTML = '';
+
+    const filteredData = mortgageData.filter(d => {
+      return currentYearFilter === 'all' || d.year == currentYearFilter;
+    });
+
+    filteredData.forEach(d => {
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td>${d.year}</td>
+        <td>${d.ocr.toFixed(2)}</td>
+        <td>${formatRate(d, '6m')}</td>
+        <td>${formatRate(d, '1y')}</td>
+        <td>${formatRate(d, '2y')}</td>
+        <td>${formatRate(d, '3y')}</td>
+        <td>${formatRate(d, '5y')}</td>
+        <td>${d.price.toLocaleString('en-NZ', {style: 'currency', currency: 'NZD'})}</td>
+      `;
+      tableBody.appendChild(row);
+    });
+  }
+
+  // Helper to format rate based on currentRateType and term
+  function formatRate(data, term) {
+    if (currentRateType === 'standard') {
+      return data[`std${term}`] !== null ? data[`std${term}`].toFixed(2) : '-';
+    } else {
+      return data[`low${term}`] !== null ? data[`low${term}`].toFixed(2) : '-';
+    }
+  }
+
+  // Chart.js setup
+  let rateChart = null;
+
+  function buildChart() {
+    // Prepare labels and datasets based on filters
+    const filteredData = mortgageData.filter(d => {
+      return currentYearFilter === 'all' || d.year == currentYearFilter;
+    });
+
+    const labels = filteredData.map(d => d.year);
+
+    // For chart, show one term for clarity - let's pick 1Y rate for demo
+    const dataSetLabel = currentRateType === 'standard' ? '1 Year Standard Rate %' : '1 Year Low Equity Rate %';
+
+    const dataPoints = filteredData.map(d => {
+      return currentRateType === 'standard' ? d.std1y : d.low1y;
+    });
+
+    // If no chart exists, create one, else update
+    if (!rateChart) {
+      rateChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{
+            label: dataSetLabel,
+            data: dataPoints,
+            fill: false,
+            borderColor: 'rgb(75, 192, 192)',
+            tension: 0.2,
+            pointRadius: 5,
+            pointHoverRadius: 7
+          }]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: {
+              beginAtZero: false,
+              title: { display: true, text: 'Rate (%)' }
+            },
+            x: {
+              title: { display: true, text: 'Year' }
+            }
+          },
+          plugins: {
+            tooltip: {
+              callbacks: {
+                label: ctx => ctx.parsed.y ? `${ctx.parsed.y.toFixed(2)}%` : 'N/A'
+              }
+            }
+          }
+        }
+      });
+    } else {
+      // Update existing chart
+      rateChart.data.labels = labels;
+      rateChart.data.datasets[0].label = dataSetLabel;
+      rateChart.data.datasets[0].data = dataPoints;
+      rateChart.update();
+    }
+  }
+
+  // Event handlers
+  yearFilter.addEventListener('change', e => {
+    currentYearFilter = e.target.value;
+    buildTable();
+    buildChart();
+  });
+
+  rateRadios.forEach(radio => {
+    radio.addEventListener('change', e => {
+      currentRateType = e.target.value;
+      buildTable();
+      buildChart();
+    });
+  });
+
+  // Initialize
+  populateYearFilter();
+  buildTable();
+  buildChart();
+</script>
+
+</body>
+</html>
